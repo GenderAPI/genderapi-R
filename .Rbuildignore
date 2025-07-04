@@ -1,0 +1,5 @@
+^\\.Rproj\\.user$
+^\\.idea$
+^\\.git$
+^\\.gitignore$
+^README\\.md$
