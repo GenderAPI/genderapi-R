@@ -1,6 +1,6 @@
 # genderapi-R
 
-Official R Client for [GenderAPI.io](https://www.genderapi.io) — determine gender from **names**, **emails**, and **usernames** using AI.
+Official R Client for [GenderAPI.io](https://www.genderapi.io) — determine gender from **names**, **emails**, and **usernames** using AI, including **bulk operations** for high-volume analysis.
 
 ---
 
@@ -11,33 +11,31 @@ Official R Client for [GenderAPI.io](https://www.genderapi.io) — determine gen
 
 ## 🚀 Installation
 
-Since the package is **not yet on CRAN**, you can install it directly from GitHub using the `{devtools}` package.
+Since the package is **not yet on CRAN**, install directly from GitHub using `{devtools}`.
 
-> If you don’t have `{devtools}` installed, install it first:
+> Install `{devtools}` if you don’t have it:
 
 ```r
 install.packages("devtools")
 ```
 
-Then, install the genderapi-R package from GitHub:
+Then install genderapi-R:
 
 ```r
 devtools::install_github("GenderAPI/genderapi-R")
 ```
 
-Finally, load the package:
+Load the package:
 
 ```r
 library(genderapi)
 ```
 
-That’s it — you’re ready to use GenderAPI in R!
-
 ---
 
 ## ⚠️ Required Packages
 
-Please make sure you also have these packages installed:
+Make sure you have these installed:
 
 ```r
 install.packages(c("httr", "jsonlite"))
@@ -59,6 +57,7 @@ result <- get_gender_by_name(
 
 print(result)
 ```
+
 ---
 
 ## 🔗 Load the Library
@@ -152,18 +151,87 @@ print(result)
 
 ---
 
+### 🔹 Get Gender by Name (Bulk)
+
+Lookup up to **100 names** in a single request.
+
+```r
+data <- list(
+  list(name = "Andrea", country = "DE", id = "123"),
+  list(name = "andrea", country = "IT", id = "456"),
+  list(name = "james", country = "US", id = "789")
+)
+
+result <- get_gender_by_name_bulk(
+  api_key = api_key,
+  data = data
+)
+
+print(result)
+```
+
+---
+
+### 🔹 Get Gender by Email (Bulk)
+
+Lookup up to **50 emails** in a single request.
+
+```r
+data <- list(
+  list(email = "john@example.com", country = "US", id = "abc123"),
+  list(email = "maria@domain.de", country = "DE", id = "def456")
+)
+
+result <- get_gender_by_email_bulk(
+  api_key = api_key,
+  data = data
+)
+
+print(result)
+```
+
+---
+
+### 🔹 Get Gender by Username (Bulk)
+
+Lookup up to **50 usernames** in a single request.
+
+```r
+data <- list(
+  list(username = "cooluser", country = "US", id = "u001"),
+  list(username = "maria2025", country = "DE", id = "u002")
+)
+
+result <- get_gender_by_username_bulk(
+  api_key = api_key,
+  data = data
+)
+
+print(result)
+```
+
+---
+
 ## 📥 API Parameters
 
-The following parameters are available for the API functions.
+Below are the parameters accepted by each function.
 
 ### Name Lookup
 
 | Parameter          | Type     | Required | Description |
 |--------------------|----------|----------|-------------|
 | name               | String   | Yes      | Name to query. |
-| country            | String   | No       | Two-letter country code (e.g. `"US"`). Helps narrow down gender detection results by region. |
-| askToAI            | Logical  | No       | Default is `FALSE`. If `TRUE`, sends the query directly to AI for maximum accuracy, consuming 3 credits per request. Recommended for non-latin characters or unusual strings. |
-| forceToGenderize   | Logical  | No       | Default is `FALSE`. When `TRUE`, analyzes even nicknames, emojis, or unconventional strings instead of returning `NULL` for non-standard names. |
+| country            | String   | No       | Two-letter country code (e.g. `"US"`). |
+| askToAI            | Logical  | No       | Default `FALSE`. If `TRUE`, queries AI directly (costs 3 credits). |
+| forceToGenderize   | Logical  | No       | Default `FALSE`. If `TRUE`, attempts to analyze nicknames, emojis, etc. |
+
+---
+
+### Name Lookup (Bulk)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| data | List of named lists | Yes | Each item contains `name` (required), `country` (optional), and `id` (optional). Max 100 records. |
 
 ---
 
@@ -172,8 +240,16 @@ The following parameters are available for the API functions.
 | Parameter | Type   | Required | Description |
 |-----------|--------|----------|-------------|
 | email     | String | Yes      | Email address to query. |
-| country   | String | No       | Two-letter country code (e.g. `"US"`). |
-| askToAI   | Logical | No      | Default is `FALSE`. |
+| country   | String | No       | Two-letter country code. |
+| askToAI   | Logical | No      | Default `FALSE`. |
+
+---
+
+### Email Lookup (Bulk)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| data | List of named lists | Yes | Each item contains `email` (required), `country` (optional), and `id` (optional). Max 50 records. |
 
 ---
 
@@ -183,16 +259,24 @@ The following parameters are available for the API functions.
 |--------------------|----------|----------|-------------|
 | username           | String   | Yes      | Username to query. |
 | country            | String   | No       | Two-letter country code. |
-| askToAI            | Logical  | No       | Default is `FALSE`. |
-| forceToGenderize   | Logical  | No       | Default is `FALSE`. |
+| askToAI            | Logical  | No       | Default `FALSE`. |
+| forceToGenderize   | Logical  | No       | Default `FALSE`. |
+
+---
+
+### Username Lookup (Bulk)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| data | List of named lists | Yes | Each item contains `username` (required), `country` (optional), and `id` (optional). Max 50 records. |
 
 ---
 
 ## ✅ API Response
 
-All functions return a list containing the API JSON response.
+All functions return a list representing the JSON response.
 
-Example output:
+Single lookup example:
 
 ```r
 list(
@@ -210,35 +294,61 @@ list(
 )
 ```
 
+Bulk lookup example:
+
+```r
+list(
+  status = TRUE,
+  used_credits = 3,
+  remaining_credits = 7265,
+  expires = 1717069765,
+  names = list(
+    list(
+      name = "andrea",
+      q = "Andrea",
+      gender = "female",
+      country = "DE",
+      total_names = 644,
+      probability = 88,
+      id = "123"
+    ),
+    list(
+      name = "andrea",
+      q = "andrea",
+      gender = "male",
+      country = "IT",
+      total_names = 13537,
+      probability = 98,
+      id = "456"
+    )
+  ),
+  duration = "5ms"
+)
+```
+
 ---
 
 ## 🔎 Response Fields
 
 | Field             | Type               | Description                                         |
 |-------------------|--------------------|-----------------------------------------------------|
-| status            | Logical            | `TRUE` or `FALSE`. Check errors if FALSE.          |
-| used_credits      | Integer            | Credits used for this request.                     |
-| remaining_credits | Integer            | Remaining credits on your account.                 |
-| expires           | Integer (timestamp)| API key expiration date (in seconds).             |
-| q                 | String             | The queried input (name, email, or username).     |
-| name              | String             | Name found.                                       |
+| status            | Logical            | `TRUE` or `FALSE`. Indicates success.              |
+| used_credits      | Integer            | Credits used for the request.                     |
+| remaining_credits | Integer            | Credits left.                                     |
+| expires           | Integer            | Unix timestamp of account expiry.                 |
+| q                 | String             | Original query input.                             |
+| name              | String             | Found name.                                       |
 | gender            | String             | `"male"`, `"female"`, or `"null"`.                |
-| country           | String             | Predicted country.                                |
-| total_names       | Integer            | Number of data samples behind the prediction.     |
-| probability       | Integer            | Likelihood percentage (50–100).                  |
-| duration          | String             | Time taken for processing.                        |
+| country           | String             | Predicted country code.                           |
+| total_names       | Integer            | Number of records used in prediction.             |
+| probability       | Integer            | Confidence (50–100).                              |
+| duration          | String             | Processing time.                                  |
 
 ---
 
 ## ⚠️ Error Handling
 
-If the API returns an error, the response will include:
-
-- `status = FALSE`
-- `errno` (integer error code)
-- `errmsg` (human-readable message)
-
-Example error response:
+If an error occurs, the API returns:
 
 ```r
 list(
@@ -248,25 +358,25 @@ list(
 )
 ```
 
-### Common Error Codes
+Common error codes:
 
-| errno | errmsg                      | Description                                                       |
-|-------|-----------------------------|-------------------------------------------------------------------|
-| 50    | access denied               | Unauthorized IP Address or Referrer. Check your access privileges. |
-| 90    | invalid country code        | Check supported country codes. [ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) |
-| 91    | name not set \|\| email not set | Missing `name` or `email` parameter.         |
-| 92    | too many names \|\| too many emails | Limit is 100 for names, 50 for emails in one request.     |
-| 93    | limit reached               | Your API key credits are exhausted.                            |
-| 94    | invalid or missing key      | The API key cannot be found.                                      |
-| 99    | API key has expired         | Renew your API key.                                       |
+| errno | errmsg                      | Description |
+|-------|-----------------------------|-------------------------------------------------|
+| 50    | access denied               | Unauthorized IP or referrer.                   |
+| 90    | invalid country code        | Invalid country code.                          |
+| 91    | name not set \|\| email not set | Missing input field.                      |
+| 92    | too many names \|\| too many emails | Exceeded bulk limits.                |
+| 93    | limit reached               | API key credits exhausted.                     |
+| 94    | invalid or missing key      | Invalid API key.                               |
+| 99    | API key has expired         | Renew your key.                                |
 
 ---
 
 ## 💻 Troubleshooting
 
-- If you see CORS errors or connectivity issues, check your internet connection or any network firewall.
-- Ensure your API key is correctly typed and active.
-- Check that required R packages are installed:
+- Check internet connection.
+- Ensure your API key is correct.
+- Confirm required R packages are installed:
     ```r
     install.packages(c("httr", "jsonlite"))
     ```
@@ -275,22 +385,15 @@ list(
 
 ## 🔗 Live Test Pages
 
-You can test gender detection directly on GenderAPI.io:
-
-- **Determine gender from a name:**  
-  [https://www.genderapi.io](https://www.genderapi.io)
-
-- **Determine gender from an email address:**  
-  [https://www.genderapi.io/determine-gender-from-email](https://www.genderapi.io/determine-gender-from-email)
-
-- **Determine gender from a username:**  
-  [https://www.genderapi.io/determine-gender-from-username](https://www.genderapi.io/determine-gender-from-username)
+- **Gender by name:** [https://www.genderapi.io](https://www.genderapi.io)
+- **Gender by email:** [https://www.genderapi.io/determine-gender-from-email](https://www.genderapi.io/determine-gender-from-email)
+- **Gender by username:** [https://www.genderapi.io/determine-gender-from-username](https://www.genderapi.io/determine-gender-from-username)
 
 ---
 
 ## 📚 Detailed API Documentation
 
-Full API reference available at:
+See full API docs:
 
 [https://www.genderapi.io/api-documentation](https://www.genderapi.io/api-documentation)
 
@@ -299,5 +402,3 @@ Full API reference available at:
 ## ⚖️ License
 
 MIT License
-
-```
