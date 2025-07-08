@@ -1,5 +1,7 @@
 Package: genderapi
 Type: Package
+Language: en-US
+SpellCheckIgnore: askToAI, errmsg, errno, forceToGenderize, GenderAPI, io
 Title: R Client for GenderAPI.io
 Version: 1.0.3
 Authors@R: c(
