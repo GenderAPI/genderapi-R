@@ -109,9 +109,21 @@ get_gender_by_username <- function(api_key, username, country = NULL, askToAI = 
 
   status <- httr::status_code(res)
 
-  if (status %in% c(200, 404)) {
-    return(httr::content(res, as = "parsed"))
+  if (status %in% c(500, 502, 503, 504, 408)) {
+    stop(paste("Server-side error or timeout. HTTP status:", status))
   } else {
-    stop(paste("Unknown error. HTTP status:", status))
+    content_text <- httr::content(res, as = "text", encoding = "UTF-8")
+
+    if (nchar(content_text) == 0) {
+      stop("Response content is empty.")
+    }
+
+    parsed <- tryCatch({
+      jsonlite::fromJSON(content_text)
+    }, error = function(e) {
+      stop("Response content is not valid JSON.")
+    })
+
+    return(parsed)
   }
 }

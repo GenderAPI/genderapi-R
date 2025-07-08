@@ -1,7 +1,7 @@
 Package: genderapi
 Type: Package
 Title: R Client for GenderAPI.io
-Version: 1.0.1
+Version: 1.0.2
 Authors@R: c(
     person(given = "Onur", family = "Ozturk", email = "onurozturk1980@gmail.com", role = c("aut", "cre"))
     )
