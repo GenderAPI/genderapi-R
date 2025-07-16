@@ -1,16 +1,15 @@
 Package: genderapi
 Type: Package
 Language: en-US
-SpellCheckIgnore: askToAI, errmsg, errno, forceToGenderize, GenderAPI, io
-Title: R Client for GenderAPI.io
+Title: Client for 'GenderAPI.io'
 Version: 1.0.3
 Authors@R: c(
     person(given = "Onur", family = "Ozturk", email = "onurozturk1980@gmail.com", role = c("aut", "cre"))
     )
-Description: Connects to GenderAPI.io to determine gender from names, emails, and usernames.
+Description: Provides an interface to the 'GenderAPI.io' web service (<https://www.genderapi.io>) for determining gender from personal names, email addresses, or social media usernames. Functions are available to submit single or batch queries and retrieve additional information such as accuracy scores and country-specific gender predictions. This package simplifies integration of 'GenderAPI.io' into R workflows for data cleaning, user profiling, and analytics tasks.
 License: MIT + file LICENSE
-URL: https://github.com/GenderAPI/genderapi-python
-BugReports: https://github.com/GenderAPI/genderapi-python/issues
+URL: https://github.com/GenderAPI/genderapi-R
+BugReports: https://github.com/GenderAPI/genderapi-R/issues
 Imports:
     httr,
     jsonlite

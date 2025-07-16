@@ -11,25 +11,18 @@ Official R Client for [GenderAPI.io](https://www.genderapi.io) — determine gen
 
 ## 🚀 Installation
 
-Since the package is **not yet on CRAN**, install directly from GitHub using `{devtools}`.
-
-> Install `{devtools}` if you don’t have it:
+The package is now available on **CRAN**. Install it with:
 
 ```r
-install.packages("devtools")
+install.packages("genderapi")
 ```
 
-Then install genderapi-R:
-
-```r
-devtools::install_github("GenderAPI/genderapi-R")
-```
-
-Load the package:
+Then load the package:
 
 ```r
 library(genderapi)
 ```
+
 
 ---
 
