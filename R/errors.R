@@ -21,6 +21,15 @@
 #'   still have been processed and billed.
 #' * `genderapi_response_error`: a 2xx response that is not a JSON object.
 #'   `code` is `"invalid_response"`.
+#' * `genderapi_access_mode_error`: an API key is set but a successful
+#'   response reports an access mode other than `"api_key"` in
+#'   `meta$access$mode` (usually `"ip_trial"`, because the key was not
+#'   recognized). `code` is `"unexpected_access_mode"`. The request has
+#'   already been processed and may have consumed IP-trial credits; it is not
+#'   retried. Fields: `access_mode`, `access_reason`, `result` (the complete
+#'   parsed result the function would have returned, including `meta$usage`),
+#'   `status` and `request_id`. Disable the check with
+#'   `genderapi_client(require_api_key_access = FALSE)`.
 #'
 #' The package never retries. After a 429 wait for `retry_after` seconds; the
 #' next request is a new, billable operation. When `billing_status` is
@@ -143,6 +152,28 @@ http_abort <- function(status, headers, body, raw_text) {
     body = body,
     raw = raw_text,
     headers = headers
+  )
+}
+
+access_mode_abort <- function(res, access) {
+  mode <- if (is_string(access$mode)) access$mode else NULL
+  reason <- if (is_string(access$reason)) access$reason else NULL
+  http <- attr(res, "http")
+  request_id <- first_string(res$meta$request_id,
+                             header_value(http$headers, "x-request-id"))
+  genderapi_abort(
+    paste0(
+      "Expected API-key access but the response reports access mode ",
+      if (is.null(mode)) "null" else paste0("\"", mode, "\""),
+      ". Check your API key; this request may have consumed IP-trial credits."
+    ),
+    "genderapi_access_mode_error",
+    code = "unexpected_access_mode",
+    access_mode = mode,
+    access_reason = reason,
+    result = res,
+    status = http$status,
+    request_id = request_id
   )
 }
 

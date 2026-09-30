@@ -1,6 +1,6 @@
 test_that("dataset prediction is returned with all fields", {
   skip_if_not_installed("webfakes")
-  res <- genderapi_name("Onur", country = "TR", client = fake_client("dataset"))
+  res <- genderapi_name("Onur", country = "TR", client = fake_client("dataset", api_key = NULL))
   expect_s3_class(res, "genderapi_prediction")
   expect_s3_class(res, "genderapi_response")
   fx <- read_fixture("gender-dataset")
@@ -25,7 +25,7 @@ test_that("dataset prediction is returned with all fields", {
 test_that("AI (alias) prediction keeps model_reported confidence and negative balance", {
   skip_if_not_installed("webfakes")
   res <- genderapi_username("prenses", country = "TR", force_to_genderize = TRUE,
-                            client = fake_client("alias"))
+                            client = fake_client("alias", api_key = NULL))
   expect_identical(res$data$gender, "female")
   expect_identical(res$data$source, "ai")
   expect_identical(res$data$confidence, 0.7)
@@ -40,7 +40,7 @@ test_that("AI (alias) prediction keeps model_reported confidence and negative ba
 
 test_that("unknown result is a normal, billable return value", {
   skip_if_not_installed("webfakes")
-  res <- genderapi_name("zzzxxyy", client = fake_client("unknown"))
+  res <- genderapi_name("zzzxxyy", client = fake_client("unknown", api_key = NULL))
   expect_null(res$data$gender)
   expect_null(res$data$confidence)
   expect_null(res$data$confidence_kind)
@@ -55,7 +55,7 @@ test_that("unknown result is a normal, billable return value", {
 
 test_that("unknown fields are tolerated and kept", {
   skip_if_not_installed("webfakes")
-  res <- genderapi_email("onur@example.com", client = fake_client("extra"))
+  res <- genderapi_email("onur@example.com", client = fake_client("extra", api_key = NULL))
   expect_identical(res$data$future_field, list(nested = TRUE))
   expect_identical(res$meta$future_meta, "x")
   expect_identical(res$top_level_extra, 1L)

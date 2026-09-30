@@ -2,6 +2,9 @@
 # Base URLs look like <server>/s/<scenario>/api/v2; the scenario decides the
 # response. Every request is logged so tests can count calls (no retries,
 # no redirects followed, no request for client-side validation errors).
+# The fixtures report meta.access.mode "ip_trial" (no key). A scenario name
+# ending in "-key" (e.g. "usage-key") serves the same fixture with
+# meta.access.mode "api_key", as the real server does for a valid key.
 
 fixture_dir <- normalizePath(test_path("fixtures"))
 test_key <- "0123456789abcdef01234567"
@@ -34,9 +37,17 @@ fake_app <- function() {
       user_agent = req$get_header("User-Agent"),
       body = body_text
     )
+    scenario <- req$params$scenario
+    key_mode <- grepl("-key$", scenario)
+    scenario <- sub("-key$", "", scenario)
     fixture <- function(name) {
-      paste(readLines(file.path(app$locals$fixture_dir, paste0(name, ".json")),
-                      encoding = "UTF-8", warn = FALSE), collapse = "\n")
+      text <- paste(readLines(file.path(app$locals$fixture_dir, paste0(name, ".json")),
+                              encoding = "UTF-8", warn = FALSE), collapse = "\n")
+      if (key_mode) {
+        text <- gsub('"mode": "ip_trial",\\s*"reason": "api_key_missing"',
+                     '"mode": "api_key", "reason": null', text, perl = TRUE)
+      }
+      text
     }
     reply <- function(status, text, type = "application/json", headers = list()) {
       res$set_status(status)
@@ -64,7 +75,7 @@ fake_app <- function() {
       ), auto_unbox = TRUE, null = "null")
     }
     switch(
-      req$params$scenario,
+      scenario,
       dataset = reply(200L, fixture("gender-dataset")),
       alias = reply(200L, fixture("gender-alias-ai")),
       unknown = reply(200L, fixture("gender-unknown")),

@@ -114,7 +114,7 @@ genderapi_gender <- function(type, value, country = NULL, ai_mode = NULL,
   item <- genderapi_item(type, value, country = country, ai_mode = ai_mode,
                          force_to_genderize = force_to_genderize, id = id)
   body <- genderapi_request(client, "POST", "/gender", unclass(item))
-  new_response(body, "genderapi_prediction")
+  check_access_mode(client, new_response(body, "genderapi_prediction"))
 }
 
 #' @rdname genderapi_gender
@@ -201,7 +201,7 @@ genderapi_batch <- function(items, client = genderapi_client()) {
   }
   payload <- list(items = unname(lapply(items, unclass)))
   body <- genderapi_request(client, "POST", "/gender/batch", payload)
-  new_response(body, "genderapi_batch")
+  check_access_mode(client, new_response(body, "genderapi_batch"))
 }
 
 normalize_items <- function(items) {

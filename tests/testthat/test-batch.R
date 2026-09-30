@@ -6,7 +6,7 @@ test_that("partial batch success is returned, not raised", {
     genderapi_item("name", "zzzxxyy", id = "missing"),
     list(type = "name", value = "Alex", id = "failed", options = list(ai_mode = "always"))
   )
-  res <- genderapi_batch(items, client = fake_client("batch"))
+  res <- genderapi_batch(items, client = fake_client("batch", api_key = NULL))
   expect_s3_class(res, "genderapi_batch")
   expect_identical(res$meta$summary,
                    list(total = 3L, succeeded = 2L, identified = 1L, unknown = 1L, failed = 1L))
@@ -39,7 +39,7 @@ test_that("partial batch success is returned, not raised", {
 test_that("a single-item batch is still sent as an array", {
   skip_if_not_installed("webfakes")
   reset_log()
-  genderapi_batch(list(genderapi_item("name", "Onur")), client = fake_client("batch"))
+  genderapi_batch(list(genderapi_item("name", "Onur")), client = fake_client("batch", api_key = NULL))
   sent <- request_log()[[1]]$body
   expect_identical(sent, '{"items":[{"type":"name","value":"Onur"}]}')
 })
@@ -50,7 +50,7 @@ test_that("data frames are accepted as batch input", {
   df <- data.frame(type = c("name", "email"), value = c("Onur", "a@example.com"),
                    country = c("TR", NA), id = c("a", "b"), ai_mode = c(NA, "off"),
                    stringsAsFactors = FALSE)
-  genderapi_batch(df, client = fake_client("batch"))
+  genderapi_batch(df, client = fake_client("batch", api_key = NULL))
   sent <- jsonlite::fromJSON(request_log()[[1]]$body, simplifyVector = FALSE)$items
   expect_identical(sent[[1]], list(type = "name", value = "Onur", country = "TR", id = "a"))
   expect_identical(sent[[2]], list(type = "email", value = "a@example.com", id = "b",

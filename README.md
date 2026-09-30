@@ -4,7 +4,7 @@ Official GenderAPI.io V2 client for R. It calls the V2 API at `https://api.gende
 
 Results are inferences, not verified identity. They can be `unknown` (`gender` is `NULL`). `confidence` is not a calibrated probability.
 
-> **Version 2.0.0 is a breaking release.** The 1.x functions (`get_gender_by_name()` and friends) used the V1 API and are now defunct. 1.x (V1) is in maintenance on the [`v1` branch](https://github.com/GenderAPI/genderapi-R/tree/v1); the V1 API itself remains available. See [Migrating from 1.x](#migrating-from-1x).
+> **Version 2.0.0 is a breaking release.** The 1.x functions (`get_gender_by_name()` and friends) used the V1 API and are now defunct in 2.0.0. 1.x (V1 API) stays available and installable indefinitely; no deprecation or shutdown is planned. To keep using it, pin 1.x: `remotes::install_version("genderapi", "1.0.3")`. The source stays on the [`v1` branch](https://github.com/GenderAPI/genderapi-R/tree/v1). See [Migrating from 1.x](#migrating-from-1x).
 
 - API documentation: <https://www.genderapi.io/api-documentation>
 - V2 guides: [authentication](https://www.genderapi.io/docs/v2/authentication), [request parameters](https://www.genderapi.io/docs/v2/request-parameters), [AI options](https://www.genderapi.io/docs/v2/ai-options), [responses](https://www.genderapi.io/docs/v2/responses), [batch](https://www.genderapi.io/docs/v2/batch), [credits and usage](https://www.genderapi.io/docs/v2/credits-and-usage), [errors and retries](https://www.genderapi.io/docs/v2/errors-and-retries), [phone validation](https://www.genderapi.io/docs/v2/phone-validation), [migration](https://www.genderapi.io/docs/v2/migration)
@@ -70,7 +70,7 @@ Other functions: `genderapi_gender(type, value, ...)` (the generic form of the t
 
 | Function | HTTP |
 | --- | --- |
-| `genderapi_client(api_key, base_url, timeout, user_agent)` | none (never sends a request) |
+| `genderapi_client(api_key, base_url, timeout, user_agent, require_api_key_access)` | none (never sends a request) |
 | `genderapi_gender(type, value, country, ai_mode, force_to_genderize, id, client)` | `POST /gender` |
 | `genderapi_name()`, `genderapi_email()`, `genderapi_username()` | `POST /gender` |
 | `genderapi_item(type, value, country, ai_mode, force_to_genderize, id)` | none (builds and validates a batch item) |
@@ -88,10 +88,13 @@ Every request function takes `client = genderapi_client()` as its last argument,
 ```r
 client <- genderapi_client(
   api_key = Sys.getenv("GENDERAPI_API_KEY"),   # default; NULL or "" means no key
-  timeout = 10                                 # seconds, default 10
+  timeout = 10,                                # seconds, default 10
+  require_api_key_access = TRUE                # default; see below
 )
 genderapi_name("Onur", client = client)
 ```
+
+`require_api_key_access` (default `TRUE`, effective only when a key is set): if a successful response to a prediction, batch, usage or phone request reports a `meta$access$mode` other than `"api_key"` (usually `"ip_trial"` because the key was not recognized), a `genderapi_access_mode_error` is raised instead of returning the result. The request has already been processed and may have consumed IP-trial credits; the full result is in the error's `result` field. It is never retried. `genderapi_capabilities()` and `genderapi_error_catalog()` are never checked. Set `require_api_key_access = FALSE` to get such responses back normally.
 
 Request fields (sent with their exact V2 wire names):
 
@@ -151,6 +154,7 @@ All errors inherit from `genderapi_error`:
 | `genderapi_redirect_error` | HTTP 3xx; not followed | `status`, `location` |
 | `genderapi_transport_error` | network failure or timeout (`code` is `timeout` or `transport_error`) | message |
 | `genderapi_response_error` | 2xx without a JSON object | `status`, `raw` |
+| `genderapi_access_mode_error` | a key is set but a 2xx response reports `meta$access$mode` other than `"api_key"` (`code` is `unexpected_access_mode`); the request was already processed and may have consumed IP-trial credits | `access_mode`, `access_reason`, `result` (the full parsed result, including `meta$usage`), `status`, `request_id` |
 
 ```r
 res <- tryCatch(
@@ -179,7 +183,7 @@ Common statuses: 401 invalid key, 403 insufficient credits or restricted key, 42
 
 ## IP trial (no key)
 
-Without a key the package sends no `Authorization` header and the server applies its shared IP trial: 10 credits per 24 hours, shared by every client behind the same public IP, with at most 10 items per batch. The package has no client-side trial logic. Missing, malformed or unknown keys may fall back to the trial; disabled, expired or restricted keys do not. Check `meta$access$mode` to see which access mode was used.
+Without a key the package sends no `Authorization` header and the server applies its shared IP trial: 10 credits per 24 hours, shared by every client behind the same public IP, with at most 10 items per batch. The package has no client-side trial logic. Missing, malformed or unknown keys may fall back to the trial; disabled, expired or restricted keys do not. Check `meta$access$mode` to see which access mode was used. When a key is set and the server still answers through the IP trial, the package raises `genderapi_access_mode_error` (the result is in `e$result`) unless the client was created with `require_api_key_access = FALSE`.
 
 ## Server-side only
 
@@ -207,6 +211,14 @@ Use this package on servers, in scheduled jobs or in your own analysis environme
 | `httr` dependency | `curl` + `jsonlite` |
 
 V1 and V2 share the same key and credit balance. Changing only the URL is not enough: V2 uses a different request and response contract.
+
+To stay on the V1 API, keep using 1.x: it stays available and installable indefinitely, and no deprecation or shutdown is planned. Pin it with:
+
+```r
+remotes::install_version("genderapi", "1.0.3")
+```
+
+The 1.x source stays on the [`v1` branch](https://github.com/GenderAPI/genderapi-R/tree/v1). In 2.0.0 the 1.x function names remain as defunct stubs whose error message names the V2 replacement and this pin command.
 
 ## Development
 

@@ -27,6 +27,15 @@ timeout). \code{code} is \code{"timeout"} or \code{"transport_error"}. The reque
 still have been processed and billed.
 \item \code{genderapi_response_error}: a 2xx response that is not a JSON object.
 \code{code} is \code{"invalid_response"}.
+\item \code{genderapi_access_mode_error}: an API key is set but a successful
+response reports an access mode other than \code{"api_key"} in
+\code{meta$access$mode} (usually \code{"ip_trial"}, because the key was not
+recognized). \code{code} is \code{"unexpected_access_mode"}. The request has
+already been processed and may have consumed IP-trial credits; it is not
+retried. Fields: \code{access_mode}, \code{access_reason}, \code{result} (the complete
+parsed result the function would have returned, including \code{meta$usage}),
+\code{status} and \code{request_id}. Disable the check with
+\code{genderapi_client(require_api_key_access = FALSE)}.
 }
 
 The package never retries. After a 429 wait for \code{retry_after} seconds; the

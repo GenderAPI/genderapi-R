@@ -15,7 +15,8 @@
 #' u$meta$access$mode
 #' }
 genderapi_usage <- function(client = genderapi_client()) {
-  new_response(genderapi_request(client, "GET", "/usage"), "genderapi_usage")
+  check_access_mode(client, new_response(genderapi_request(client, "GET", "/usage"),
+                                         "genderapi_usage"))
 }
 
 #' Validate a phone number
@@ -46,8 +47,8 @@ genderapi_validate_phone <- function(number, country = NULL,
   }
   payload <- list(number = number)
   if (!is.null(country)) payload$country <- country
-  new_response(genderapi_request(client, "POST", "/phone/validate", payload),
-               "genderapi_phone")
+  check_access_mode(client, new_response(
+    genderapi_request(client, "POST", "/phone/validate", payload), "genderapi_phone"))
 }
 
 #' Read API capabilities and the error catalog

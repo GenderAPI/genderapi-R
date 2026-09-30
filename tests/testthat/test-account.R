@@ -1,12 +1,12 @@
 test_that("usage is a GET with auth", {
   skip_if_not_installed("webfakes")
   reset_log()
-  u <- genderapi_usage(client = fake_client("usage"))
+  u <- genderapi_usage(client = fake_client("usage-key"))
   expect_s3_class(u, "genderapi_usage")
   expect_identical(u$data$remaining_credits, 9L)
   expect_identical(u$meta$usage$billing_status, "not_charged")
   expect_identical(u$meta$usage$resets_at, "2026-09-26T12:00:00.000Z")
-  expect_identical(u$meta$access$mode, "ip_trial")
+  expect_identical(u$meta$access$mode, "api_key")
   r <- request_log()[[1]]
   expect_identical(r$method, "GET")
   expect_identical(r$rest, "/usage")
@@ -17,7 +17,7 @@ test_that("usage is a GET with auth", {
 test_that("phone validation posts number and country", {
   skip_if_not_installed("webfakes")
   reset_log()
-  p <- genderapi_validate_phone("+90 (212) 555-01-01", country = "TR", client = fake_client("phone"))
+  p <- genderapi_validate_phone("+90 (212) 555-01-01", country = "TR", client = fake_client("phone-key"))
   expect_s3_class(p, "genderapi_phone")
   expect_false(p$data$valid)
   expect_null(p$data$e164)

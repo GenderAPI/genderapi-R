@@ -8,7 +8,8 @@ genderapi_client(
   api_key = Sys.getenv("GENDERAPI_API_KEY", ""),
   base_url = default_base_url,
   timeout = 10,
-  user_agent = NULL
+  user_agent = NULL,
+  require_api_key_access = TRUE
 )
 }
 \arguments{
@@ -24,6 +25,13 @@ request is not retried and may still have been billed.}
 
 \item{user_agent}{Optional \code{User-Agent} header. Defaults to
 \verb{genderapi-r/<version>}.}
+
+\item{require_api_key_access}{\code{TRUE} (default) to raise a
+\code{genderapi_access_mode_error} when a key is set but a successful
+response reports an access mode other than \code{"api_key"}. Applies to
+predictions, batches, usage and phone validation, never to
+\code{\link[=genderapi_capabilities]{genderapi_capabilities()}} or \code{\link[=genderapi_error_catalog]{genderapi_error_catalog()}}. Has no effect
+without a key. See \link{genderapi_error}.}
 }
 \value{
 An object of class \code{genderapi_client}.
@@ -40,6 +48,14 @@ unset) requests are sent without an \code{Authorization} header and the server
 applies its shared IP trial (10 credits per 24 hours per public IP).
 The package has no client-side trial logic; \code{meta$access$mode} in each
 response tells you which access mode the server used.
+
+When a key is set, the package by default checks that each successful
+authenticated response reports \code{meta$access$mode == "api_key"}. If the
+server answered through another mode (usually \code{"ip_trial"} because the key
+was not recognized), a \code{genderapi_access_mode_error} is raised. The request
+has already been processed and may have consumed IP-trial credits; the
+full result is in the error's \code{result} field. It is never retried. Set
+\code{require_api_key_access = FALSE} to return such responses normally.
 
 Keep keys server-side. Never put a key in browser code, a URL, a log or a
 document shared with end users. Printing a client never shows the key.

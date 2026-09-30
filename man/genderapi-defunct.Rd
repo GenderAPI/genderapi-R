@@ -40,7 +40,9 @@ them raises an error that names the replacement:
 }
 
 
-The 1.x releases remain on CRAN's archive and on the \code{v1} branch of the
-repository.
+genderapi 1.x (V1 API) stays available and installable indefinitely; no
+deprecation or shutdown is planned. To keep using it, install 1.x with
+\code{remotes::install_version("genderapi", "1.0.3")}. The source stays on the
+\code{v1} branch of the repository.
 }
 \keyword{internal}

@@ -11,8 +11,10 @@
 #' | `get_gender_by_username()` | [genderapi_username()] |
 #' | `get_gender_by_name_bulk()`, `get_gender_by_email_bulk()`, `get_gender_by_username_bulk()` | [genderapi_batch()] |
 #'
-#' The 1.x releases remain on CRAN's archive and on the `v1` branch of the
-#' repository.
+#' genderapi 1.x (V1 API) stays available and installable indefinitely; no
+#' deprecation or shutdown is planned. To keep using it, install 1.x with
+#' `remotes::install_version("genderapi", "1.0.3")`. The source stays on the
+#' `v1` branch of the repository.
 #'
 #' @param ... Ignored.
 #' @name genderapi-defunct
@@ -22,7 +24,9 @@ NULL
 v1_defunct <- function(old, new) {
   .Defunct(new = new, package = "genderapi", msg = paste0(
     "`", old, "()` was removed in genderapi 2.0.0 (V2 API). Use `", new,
-    "()` instead; see ?`genderapi-defunct` for the migration table."
+    "()` instead; see ?`genderapi-defunct` for the migration table. ",
+    "To keep using the V1 API, install genderapi 1.x: ",
+    "remotes::install_version(\"genderapi\", \"1.0.3\")."
   ))
 }
 
