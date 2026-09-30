@@ -1,5 +1,7 @@
 # genderapi-R
 
+> This R package is a legacy V1 client for GenderAPI.io. Its methods, request fields and response examples use the V1 contract. Use the [V1 API documentation](https://www.genderapi.io/api-documentation/v1) for this package. For a new integration, see the [V2 documentation](https://www.genderapi.io/api-documentation). V2 uses a different request and response format; changing the base URL alone does not migrate this client. Results are inferences and may be unresolved. They do not verify a person's identity.
+
 Official R Client for [GenderAPI.io](https://www.genderapi.io) — determine gender from **names**, **emails**, and **usernames** using AI, including **bulk operations** for high-volume analysis.
 
 ---
@@ -215,8 +217,8 @@ Below are the parameters accepted by each function.
 |--------------------|----------|----------|-------------|
 | name               | String   | Yes      | Name to query. |
 | country            | String   | No       | Two-letter country code (e.g. `"US"`). |
-| askToAI            | Logical  | No       | Default `FALSE`. If `TRUE`, queries AI directly (costs 3 credits). |
-| forceToGenderize   | Logical  | No       | Default `FALSE`. If `TRUE`, attempts to analyze nicknames, emojis, etc. |
+| askToAI            | Logical  | No       | Defaults to `FALSE`. Enables the legacy AI option. Supported single lookups with this option use a 2-credit tariff. This does not guarantee higher accuracy or a resolved result. Ordinary lookups and batch requests follow their V1 billing rules; inspect the returned `used_credits` value. |
+| forceToGenderize   | Logical  | No       | Default is `FALSE`. When `TRUE`, allows interpretation of nickname-like or unconventional inputs where supported by this V1 method. A result may still be unresolved; the option does not verify identity. |
 
 ---
 
@@ -234,7 +236,7 @@ Below are the parameters accepted by each function.
 |-----------|--------|----------|-------------|
 | email     | String | Yes      | Email address to query. |
 | country   | String | No       | Two-letter country code. |
-| askToAI   | Logical | No      | Default `FALSE`. |
+| askToAI   | Logical | No      | Defaults to `FALSE`. Enables the legacy AI option. Supported single lookups with this option use a 2-credit tariff. This does not guarantee higher accuracy or a resolved result. Ordinary lookups and batch requests follow their V1 billing rules; inspect the returned `used_credits` value. |
 
 ---
 
@@ -252,8 +254,8 @@ Below are the parameters accepted by each function.
 |--------------------|----------|----------|-------------|
 | username           | String   | Yes      | Username to query. |
 | country            | String   | No       | Two-letter country code. |
-| askToAI            | Logical  | No       | Default `FALSE`. |
-| forceToGenderize   | Logical  | No       | Default `FALSE`. |
+| askToAI            | Logical  | No       | Defaults to `FALSE`. Enables the legacy AI option. Supported single lookups with this option use a 2-credit tariff. This does not guarantee higher accuracy or a resolved result. Ordinary lookups and batch requests follow their V1 billing rules; inspect the returned `used_credits` value. |
+| forceToGenderize   | Logical  | No       | Default is `FALSE`. When `TRUE`, allows interpretation of nickname-like or unconventional inputs where supported by this V1 method. A result may still be unresolved; the option does not verify identity. |
 
 ---
 
@@ -386,7 +388,11 @@ Common error codes:
 
 ## 📚 Detailed API Documentation
 
-See full API docs:
+For the complete V1 API reference used by this package, visit:
+
+[https://www.genderapi.io/api-documentation/v1](https://www.genderapi.io/api-documentation/v1)
+
+For a new integration, use the V2 documentation instead (different request and response format; this client is not a V2 client):
 
 [https://www.genderapi.io/api-documentation](https://www.genderapi.io/api-documentation)
 
