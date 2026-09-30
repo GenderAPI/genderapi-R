@@ -29,5 +29,7 @@ test_that("connection failures raise a transport error", {
     api_key = NULL, base_url = "http://127.0.0.1:1/api/v2", timeout = 2)),
     genderapi_error = function(e) e)
   expect_s3_class(e, "genderapi_transport_error")
-  expect_identical(e$code, "transport_error")
+  # Windows may not refuse a closed local port immediately; the attempt then
+  # ends at the timeout instead. Either way it is a single failed transport.
+  expect_true(e$code %in% c("transport_error", "timeout"))
 })
