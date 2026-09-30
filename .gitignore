@@ -49,3 +49,6 @@ po/*~
 rsconnect/
 .idea
 .DS_Store
+
+# R CMD check output
+*.Rcheck/

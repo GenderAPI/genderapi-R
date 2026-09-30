@@ -1,5 +1,9 @@
-^\\.Rproj\\.user$
-^\\.idea$
-^\\.git$
-^\\.gitignore$
-^README\\.md$
+^\.Rproj\.user$
+^\.idea$
+^\.git$
+^\.gitignore$
+^\.github$
+^README\.md$
+^CHANGELOG\.md$
+^.*\.tar\.gz$
+^.*\.Rcheck$

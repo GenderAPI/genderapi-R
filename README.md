@@ -1,403 +1,237 @@
-# genderapi-R
+# genderapi (R) 2.0.0
 
-> This R package is a legacy V1 client for GenderAPI.io. Its methods, request fields and response examples use the V1 contract. Use the [V1 API documentation](https://www.genderapi.io/api-documentation/v1) for this package. For a new integration, see the [V2 documentation](https://www.genderapi.io/api-documentation). V2 uses a different request and response format; changing the base URL alone does not migrate this client. Results are inferences and may be unresolved. They do not verify a person's identity.
+Official GenderAPI.io V2 client for R. It calls the V2 API at `https://api.genderapi.io/api/v2` to infer gender from names, email addresses and usernames, run batches, read credit usage and validate phone numbers.
 
-Official R Client for [GenderAPI.io](https://www.genderapi.io) — determine gender from **names**, **emails**, and **usernames** using AI, including **bulk operations** for high-volume analysis.
+Results are inferences, not verified identity. They can be `unknown` (`gender` is `NULL`). `confidence` is not a calibrated probability.
 
----
+> **Version 2.0.0 is a breaking release.** The 1.x functions (`get_gender_by_name()` and friends) used the V1 API and are now defunct. 1.x (V1) is in maintenance on the [`v1` branch](https://github.com/GenderAPI/genderapi-R/tree/v1); the V1 API itself remains available. See [Migrating from 1.x](#migrating-from-1x).
 
-> ✅ **Get a Free API Key:**  
-> [https://app.genderapi.io](https://app.genderapi.io)
+- API documentation: <https://www.genderapi.io/api-documentation>
+- V2 guides: [authentication](https://www.genderapi.io/docs/v2/authentication), [request parameters](https://www.genderapi.io/docs/v2/request-parameters), [AI options](https://www.genderapi.io/docs/v2/ai-options), [responses](https://www.genderapi.io/docs/v2/responses), [batch](https://www.genderapi.io/docs/v2/batch), [credits and usage](https://www.genderapi.io/docs/v2/credits-and-usage), [errors and retries](https://www.genderapi.io/docs/v2/errors-and-retries), [phone validation](https://www.genderapi.io/docs/v2/phone-validation), [migration](https://www.genderapi.io/docs/v2/migration)
+- Machine-readable: [OpenAPI](https://api.genderapi.io/api/v2/openapi.json), [error catalog](https://api.genderapi.io/api/v2/errors)
 
----
-
-## 🚀 Installation
-
-The package is now available on **CRAN**. Install it with:
+## Installation
 
 ```r
-install.packages("genderapi")
+install.packages("genderapi")          # from CRAN, once 2.0.0 is published there
+
+# or the development version from this branch
+# install.packages("remotes")
+remotes::install_github("GenderAPI/genderapi-R", ref = "v2")
 ```
 
-Then load the package:
+Requires R >= 4.1 and the `curl` and `jsonlite` packages.
 
-```r
-library(genderapi)
+## Quick start
+
+Set the key in the server environment (for example in `~/.Renviron` or your deployment secrets), not in code:
+
+```sh
+GENDERAPI_API_KEY=your_api_key
 ```
-
-
----
-
-## ⚠️ Required Packages
-
-Make sure you have these installed:
-
-```r
-install.packages(c("httr", "jsonlite"))
-```
-
----
-
-## Example
 
 ```r
 library(genderapi)
 
-api_key <- "YOUR_API_KEY"
+# Single prediction (one billable operation)
+res <- genderapi_name("Onur", country = "TR")
+res$data$gender            # "male", "female" or NULL
+res$data$result_status     # "identified" or "unknown"
+res$data$confidence        # 0-1, read with res$data$confidence_kind
+res$meta$usage             # billing_status, charged_credits, remaining_credits, ...
+as.data.frame(res)         # one row, NULL becomes NA
 
-result <- get_gender_by_name(
-  api_key = api_key,
-  name = "Michael"
+genderapi_email("alex@example.com")
+genderapi_username("prenses", force_to_genderize = TRUE)
+
+# Batch of 1-50 items (one billable operation)
+items <- list(
+  genderapi_item("name", "Onur", country = "TR", id = "row-1"),
+  genderapi_item("email", "alex@example.com", id = "row-2"),
+  genderapi_item("username", "prenses", ai_mode = "fallback", id = "row-3")
 )
+batch <- genderapi_batch(items)
+batch$meta$summary         # total, succeeded, identified, unknown, failed
+as.data.frame(batch)       # one row per item, in submission order
+genderapi_failed(batch)    # items that carry an error instead of data
 
-print(result)
+# A data frame works too (columns type, value, country, ai_mode, force_to_genderize, id)
+genderapi_batch(data.frame(type = "name", value = c("Onur", "Ayse"), id = c("a", "b")))
+
+# Usage (free)
+u <- genderapi_usage()
+u$data$remaining_credits
+u$meta$access$mode         # "api_key" or "ip_trial"
 ```
 
----
+Other functions: `genderapi_gender(type, value, ...)` (the generic form of the three shortcuts), `genderapi_validate_phone(number, country = NULL)` (1 credit, including invalid numbers), `genderapi_capabilities()` and `genderapi_error_catalog()` (public, no key sent).
 
-## 🔗 Load the Library
+## Public API
+
+| Function | HTTP |
+| --- | --- |
+| `genderapi_client(api_key, base_url, timeout, user_agent)` | none (never sends a request) |
+| `genderapi_gender(type, value, country, ai_mode, force_to_genderize, id, client)` | `POST /gender` |
+| `genderapi_name()`, `genderapi_email()`, `genderapi_username()` | `POST /gender` |
+| `genderapi_item(type, value, country, ai_mode, force_to_genderize, id)` | none (builds and validates a batch item) |
+| `genderapi_batch(items, client)` | `POST /gender/batch` |
+| `genderapi_usage(client)` | `GET /usage` (free) |
+| `genderapi_validate_phone(number, country, client)` | `POST /phone/validate` |
+| `genderapi_capabilities(client)` | `GET /` (no auth) |
+| `genderapi_error_catalog(client)` | `GET /errors` (no auth) |
+| `genderapi_failed(x)`, `as.data.frame(x)` | none (helpers for results) |
+
+Every request function takes `client = genderapi_client()` as its last argument, so the environment variable is enough for most scripts.
+
+## Options
 
 ```r
-library(genderapi)
+client <- genderapi_client(
+  api_key = Sys.getenv("GENDERAPI_API_KEY"),   # default; NULL or "" means no key
+  timeout = 10                                 # seconds, default 10
+)
+genderapi_name("Onur", client = client)
 ```
 
----
+Request fields (sent with their exact V2 wire names):
 
-## 📝 Usage
+| Argument | Wire field | Rules |
+| --- | --- | --- |
+| `type` | `type` | `"name"`, `"email"` or `"username"` |
+| `value` | `value` | 1 to 254 characters, not only whitespace, no control characters |
+| `country` | `country` | optional upper-case ISO 3166-1 alpha-2 code, such as `"TR"`; omit when unknown |
+| `ai_mode` | `options.ai_mode` | optional `"off"`, `"fallback"` or `"always"`. Server default: `fallback` for single requests, `off` for batch items |
+| `force_to_genderize` | `forceToGenderize` | `TRUE` tries the dataset first, then nickname-aware AI. Not combinable with `ai_mode` `"off"` or `"always"` |
+| `id` | `id` | optional, 1 to 64 characters, unique within a batch |
 
-### 🔹 Get Gender by Name
+These cheap checks run before any request; a failure raises `genderapi_validation_error` and nothing is sent. The API performs the authoritative validation (email syntax, country membership, trial batch limit).
+
+Tariffs (decided by the server): dataset results and automatic AI fallback cost 1 credit in total, including unknown results; `ai_mode = "always"` costs 2; `force_to_genderize = TRUE` costs 1 when the dataset resolves the gender and 2 in total when AI is used. A positive starting balance is enough, so a 2-credit request can leave the balance at -1.
+
+## Response fields
+
+Functions return the parsed V2 JSON as a list, with every field kept (including fields added later) and JSON `null` as `NULL`.
+
+Prediction `data`:
+
+| Field | Meaning |
+| --- | --- |
+| `gender` | `"male"`, `"female"` or `NULL` |
+| `result_status` | `"identified"` or `"unknown"` (an inference status, not identity verification) |
+| `reason` | `NULL` when identified; `not_found`, `no_name_candidate`, `ambiguous` or `insufficient_evidence` |
+| `confidence`, `confidence_kind` | 0-1 score and its kind: `observed_frequency` (dataset share) or `model_reported` (AI score, not calibrated). Returned unchanged; not a percentage |
+| `sample_count` | dataset sample size; `NULL` for AI |
+| `source` | `dataset`, `ai` or `none` |
+| `name`, `country`, `country_source` | returned name, country and where the country came from (`dataset`, `ai_association` or `NULL`) |
+| `match` | `name`, `method` (`normalized`, `token`, `substring`, `model_inference`), `scope` (`country`, `global`), `country` |
+| `input` | echo of the submitted input |
+
+`meta`:
+
+| Field | Meaning |
+| --- | --- |
+| `request_id`, `duration_ms` | reference for support and timing |
+| `access$mode` | `api_key`, `ip_trial` or `unauthenticated`; `access$reason` explains trial access |
+| `usage$billing_status` | `not_charged`, `confirmed` or `unconfirmed` |
+| `usage$charged_credits` | credits charged by this operation; `NULL` when unconfirmed |
+| `usage$remaining_credits` | balance at completion; can be negative or `NULL` |
+| `usage$resets_at`, `limit`, `period_seconds` | IP-trial window, `NULL` otherwise |
+| `summary` (batch) | `total`, `succeeded`, `identified`, `unknown`, `failed` |
+
+Batch `data` is a list of items with `index`, the optional `id`, `charged_credits` and exactly one of `data` (a prediction) or `error` (a problem with `code`).
+
+## Errors
+
+All errors inherit from `genderapi_error`:
+
+| Class | When | Useful fields |
+| --- | --- | --- |
+| `genderapi_validation_error` | client-side input check failed; no request sent | message |
+| `genderapi_http_error` | HTTP 400 or higher | `status`, `code`, `title`, `detail`, `action`, `errors` (validation pointers), `request_id`, `retry_after`, `billing_status`, `usage`, `data` (all-failed batch items), `body`, `raw`, `headers` |
+| `genderapi_redirect_error` | HTTP 3xx; not followed | `status`, `location` |
+| `genderapi_transport_error` | network failure or timeout (`code` is `timeout` or `transport_error`) | message |
+| `genderapi_response_error` | 2xx without a JSON object | `status`, `raw` |
 
 ```r
-api_key <- "YOUR_API_KEY"
-
-result <- get_gender_by_name(
-  api_key = api_key,
-  name = "Michael"
+res <- tryCatch(
+  genderapi_name("Onur"),
+  genderapi_http_error = function(e) {
+    if (identical(e$code, "rate_limit_exceeded")) message("Wait ", e$retry_after, " s")
+    if (identical(e$billing_status, "unconfirmed")) message("Contact support with ", e$request_id)
+    NULL
+  }
 )
-
-print(result)
 ```
 
-#### With Additional Options
+Match on `code`, never on the human-readable `detail`. `request_id` comes from the problem body, `meta$request_id` or the `X-Request-ID` header. Error bodies can contain the submitted input: do not log them wholesale.
+
+Common statuses: 401 invalid key, 403 insufficient credits or restricted key, 422 invalid fields (see `errors`), 429 rate or concurrency limit (see `retry_after`), 502 provider failure, 503 dependency unavailable or billing reconciliation required, 504 prediction timeout.
+
+## Billing and no-retry rules
+
+- **The package never retries.** Not after a timeout, a lost response, a 5xx or a 429. A request whose response was lost may still have been processed and billed; check `genderapi_usage()` before sending it again.
+- **429:** wait for `retry_after` seconds. The next request is a new operation with normal charges.
+- **`billing_status == "unconfirmed"` or `action == "contact_support"`:** contact support with `request_id` before retrying.
+- **Prediction failures (502/503/504):** inspect `billing_status` and fix the cause before sending another request.
+- **Partial batch success is not an error.** Retry only the failed items (`genderapi_failed()`), and only once billing is confirmed. Resubmitting successful items charges them again.
+- **Redirects are never followed**, so the key is never forwarded to another host.
+- The default timeout is 10 seconds (`genderapi_client(timeout = ...)`).
+
+## IP trial (no key)
+
+Without a key the package sends no `Authorization` header and the server applies its shared IP trial: 10 credits per 24 hours, shared by every client behind the same public IP, with at most 10 items per batch. The package has no client-side trial logic. Missing, malformed or unknown keys may fall back to the trial; disabled, expired or restricted keys do not. Check `meta$access$mode` to see which access mode was used.
+
+## Server-side only
+
+Use this package on servers, in scheduled jobs or in your own analysis environment. Never embed an API key in browser code, a Shiny UI sent to clients, a shared notebook or a document. The key is sent only in the `Authorization: Bearer` header, never in a URL, and printing a client does not show it. The base URL must use HTTPS; `http://` is accepted only for `localhost`, `127.0.0.1` and `[::1]` for local tests.
+
+## Migrating from 1.x
+
+| 1.x (V1) | 2.0.0 (V2) |
+| --- | --- |
+| `get_gender_by_name(api_key, name, ...)` | `genderapi_name(value, ...)` or `genderapi_gender("name", value, ...)` |
+| `get_gender_by_email(api_key, email, ...)` | `genderapi_email(value, ...)` |
+| `get_gender_by_username(api_key, username, ...)` | `genderapi_username(value, ...)` |
+| `get_gender_by_*_bulk(api_key, data)` | `genderapi_batch(items)` (1-50 mixed items) |
+| `api_key` argument on every call | `genderapi_client(api_key = ...)` or `GENDERAPI_API_KEY` |
+| V1 routes `/api`, `/api/email`, `/api/username`, `/api/*/multi/country` | `POST /api/v2/gender` with `type` and `value`; `POST /api/v2/gender/batch` with `items` |
+| `askToAI = TRUE` | `ai_mode = "always"` (2 credits) or `"fallback"` (the single-request default) |
+| `forceToGenderize` (name, username) | `force_to_genderize` for all three types; dataset first, then nickname-aware AI |
+| flat response fields | `data` for the result, `meta` for access and billing |
+| `probability` (percentage) | `data$confidence` (0-1) plus `data$confidence_kind`; not a calibrated probability |
+| `total_names` | `data$sample_count` (nullable; `NULL` for AI) |
+| `q`, `duration` | `data$input`, `meta$duration_ms` |
+| `status` / `errno` in the body | HTTP status plus problem `code`, `action` and `errors` in `genderapi_http_error` |
+| `used_credits` | `meta$usage$charged_credits` (plus `billing_status`) |
+| `remaining_credits`, `expires` | `meta$usage$remaining_credits`; `genderapi_usage()` for `expires_at`/`resets_at` |
+| `httr` dependency | `curl` + `jsonlite` |
+
+V1 and V2 share the same key and credit balance. Changing only the URL is not enough: V2 uses a different request and response contract.
+
+## Development
 
 ```r
-result <- get_gender_by_name(
-  api_key = api_key,
-  name = "李雷",
-  country = "CN",
-  askToAI = TRUE,
-  forceToGenderize = TRUE
-)
-
-print(result)
+install.packages(c("curl", "jsonlite", "testthat", "webfakes", "roxygen2"))
+roxygen2::roxygenise()
+testthat::test_local()
 ```
 
----
-
-### 🔹 Get Gender by Email
-
-```r
-result <- get_gender_by_email(
-  api_key = api_key,
-  email = "michael.smith@example.com"
-)
-
-print(result)
+```sh
+R CMD build .
+R CMD check --as-cran --no-manual genderapi_2.0.0.tar.gz
 ```
 
-#### With askToAI
+Tests run against a local fake server (`webfakes`); they never call the real API and never spend credits.
 
-```r
-result <- get_gender_by_email(
-  api_key = api_key,
-  email = "michael.smith@example.com",
-  askToAI = TRUE
-)
+## Releasing to CRAN (manual)
 
-print(result)
-```
+CRAN has no token-based publishing, so a CRAN release requires a **manual submission** by the maintainer. The `publish` GitHub workflow, triggered by a `v*` tag, only builds the source tarball, runs `R CMD check --as-cran` and attaches the tarball as a workflow artifact; it does not submit anything.
 
----
+1. Update `Version` in `DESCRIPTION` and `CHANGELOG.md`, then run the check above with no errors or warnings.
+2. Submit `genderapi_<version>.tar.gz` at <https://cran.r-project.org/submit.html> (or `devtools::submit_cran()`).
+3. CRAN sends the confirmation link to the maintainer email in `DESCRIPTION` (`Authors@R`, role `cre`: currently onurozturk1980@gmail.com). Only that address can confirm the submission; change the `cre` entry first if the maintainer changes.
+4. After acceptance, tag the release (`v<version>`).
 
-### 🔹 Get Gender by Username
+## License
 
-```r
-result <- get_gender_by_username(
-  api_key = api_key,
-  username = "michael_dev"
-)
-
-print(result)
-```
-
-#### With Additional Options
-
-```r
-result <- get_gender_by_username(
-  api_key = api_key,
-  username = "michael_dev",
-  country = "US",
-  askToAI = TRUE,
-  forceToGenderize = TRUE
-)
-
-print(result)
-```
-
----
-
-### 🔹 Get Gender by Name (Bulk)
-
-Lookup up to **100 names** in a single request.
-
-```r
-data <- list(
-  list(name = "Andrea", country = "DE", id = "123"),
-  list(name = "andrea", country = "IT", id = "456"),
-  list(name = "james", country = "US", id = "789")
-)
-
-result <- get_gender_by_name_bulk(
-  api_key = api_key,
-  data = data
-)
-
-print(result)
-```
-
----
-
-### 🔹 Get Gender by Email (Bulk)
-
-Lookup up to **50 emails** in a single request.
-
-```r
-data <- list(
-  list(email = "john@example.com", country = "US", id = "abc123"),
-  list(email = "maria@domain.de", country = "DE", id = "def456")
-)
-
-result <- get_gender_by_email_bulk(
-  api_key = api_key,
-  data = data
-)
-
-print(result)
-```
-
----
-
-### 🔹 Get Gender by Username (Bulk)
-
-Lookup up to **50 usernames** in a single request.
-
-```r
-data <- list(
-  list(username = "cooluser", country = "US", id = "u001"),
-  list(username = "maria2025", country = "DE", id = "u002")
-)
-
-result <- get_gender_by_username_bulk(
-  api_key = api_key,
-  data = data
-)
-
-print(result)
-```
-
----
-
-## 📥 API Parameters
-
-Below are the parameters accepted by each function.
-
-### Name Lookup
-
-| Parameter          | Type     | Required | Description |
-|--------------------|----------|----------|-------------|
-| name               | String   | Yes      | Name to query. |
-| country            | String   | No       | Two-letter country code (e.g. `"US"`). |
-| askToAI            | Logical  | No       | Defaults to `FALSE`. Enables the legacy AI option. Supported single lookups with this option use a 2-credit tariff. This does not guarantee higher accuracy or a resolved result. Ordinary lookups and batch requests follow their V1 billing rules; inspect the returned `used_credits` value. |
-| forceToGenderize   | Logical  | No       | Default is `FALSE`. When `TRUE`, allows interpretation of nickname-like or unconventional inputs where supported by this V1 method. A result may still be unresolved; the option does not verify identity. |
-
----
-
-### Name Lookup (Bulk)
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| data | List of named lists | Yes | Each item contains `name` (required), `country` (optional), and `id` (optional). Max 100 records. |
-
----
-
-### Email Lookup
-
-| Parameter | Type   | Required | Description |
-|-----------|--------|----------|-------------|
-| email     | String | Yes      | Email address to query. |
-| country   | String | No       | Two-letter country code. |
-| askToAI   | Logical | No      | Defaults to `FALSE`. Enables the legacy AI option. Supported single lookups with this option use a 2-credit tariff. This does not guarantee higher accuracy or a resolved result. Ordinary lookups and batch requests follow their V1 billing rules; inspect the returned `used_credits` value. |
-
----
-
-### Email Lookup (Bulk)
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| data | List of named lists | Yes | Each item contains `email` (required), `country` (optional), and `id` (optional). Max 50 records. |
-
----
-
-### Username Lookup
-
-| Parameter          | Type     | Required | Description |
-|--------------------|----------|----------|-------------|
-| username           | String   | Yes      | Username to query. |
-| country            | String   | No       | Two-letter country code. |
-| askToAI            | Logical  | No       | Defaults to `FALSE`. Enables the legacy AI option. Supported single lookups with this option use a 2-credit tariff. This does not guarantee higher accuracy or a resolved result. Ordinary lookups and batch requests follow their V1 billing rules; inspect the returned `used_credits` value. |
-| forceToGenderize   | Logical  | No       | Default is `FALSE`. When `TRUE`, allows interpretation of nickname-like or unconventional inputs where supported by this V1 method. A result may still be unresolved; the option does not verify identity. |
-
----
-
-### Username Lookup (Bulk)
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| data | List of named lists | Yes | Each item contains `username` (required), `country` (optional), and `id` (optional). Max 50 records. |
-
----
-
-## ✅ API Response
-
-All functions return a list representing the JSON response.
-
-Single lookup example:
-
-```r
-list(
-  status = TRUE,
-  used_credits = 1,
-  remaining_credits = 4999,
-  expires = 1743659200,
-  q = "michael.smith@example.com",
-  name = "Michael",
-  gender = "male",
-  country = "US",
-  total_names = 325,
-  probability = 98,
-  duration = "4ms"
-)
-```
-
-Bulk lookup example:
-
-```r
-list(
-  status = TRUE,
-  used_credits = 3,
-  remaining_credits = 7265,
-  expires = 1717069765,
-  names = list(
-    list(
-      name = "andrea",
-      q = "Andrea",
-      gender = "female",
-      country = "DE",
-      total_names = 644,
-      probability = 88,
-      id = "123"
-    ),
-    list(
-      name = "andrea",
-      q = "andrea",
-      gender = "male",
-      country = "IT",
-      total_names = 13537,
-      probability = 98,
-      id = "456"
-    )
-  ),
-  duration = "5ms"
-)
-```
-
----
-
-## 🔎 Response Fields
-
-| Field             | Type               | Description                                         |
-|-------------------|--------------------|-----------------------------------------------------|
-| status            | Logical            | `TRUE` or `FALSE`. Indicates success.              |
-| used_credits      | Integer            | Credits used for the request.                     |
-| remaining_credits | Integer            | Credits left.                                     |
-| expires           | Integer            | Unix timestamp of account expiry.                 |
-| q                 | String             | Original query input.                             |
-| name              | String             | Found name.                                       |
-| gender            | String             | `"male"`, `"female"`, or `"null"`.                |
-| country           | String             | Predicted country code.                           |
-| total_names       | Integer            | Number of records used in prediction.             |
-| probability       | Integer            | Confidence (50–100).                              |
-| duration          | String             | Processing time.                                  |
-
----
-
-## ⚠️ Error Handling
-
-If an error occurs, the API returns:
-
-```r
-list(
-  status = FALSE,
-  errno = 94,
-  errmsg = "invalid or missing key"
-)
-```
-
-Common error codes:
-
-| errno | errmsg                      | Description |
-|-------|-----------------------------|-------------------------------------------------|
-| 50    | access denied               | Unauthorized IP or referrer.                   |
-| 90    | invalid country code        | Invalid country code.                          |
-| 91    | name not set \|\| email not set | Missing input field.                      |
-| 92    | too many names \|\| too many emails | Exceeded bulk limits.                |
-| 93    | limit reached               | API key credits exhausted.                     |
-| 94    | invalid or missing key      | Invalid API key.                               |
-| 99    | API key has expired         | Renew your key.                                |
-
----
-
-## 💻 Troubleshooting
-
-- Check internet connection.
-- Ensure your API key is correct.
-- Confirm required R packages are installed:
-    ```r
-    install.packages(c("httr", "jsonlite"))
-    ```
-
----
-
-## 🔗 Live Test Pages
-
-- **Gender by name:** [https://www.genderapi.io](https://www.genderapi.io)
-- **Gender by email:** [https://www.genderapi.io/determine-gender-from-email](https://www.genderapi.io/determine-gender-from-email)
-- **Gender by username:** [https://www.genderapi.io/determine-gender-from-username](https://www.genderapi.io/determine-gender-from-username)
-
----
-
-## 📚 Detailed API Documentation
-
-For the complete V1 API reference used by this package, visit:
-
-[https://www.genderapi.io/api-documentation/v1](https://www.genderapi.io/api-documentation/v1)
-
-For a new integration, use the V2 documentation instead (different request and response format; this client is not a V2 client):
-
-[https://www.genderapi.io/api-documentation](https://www.genderapi.io/api-documentation)
-
----
-
-## ⚖️ License
-
-MIT License
+MIT. See [LICENSE](LICENSE).

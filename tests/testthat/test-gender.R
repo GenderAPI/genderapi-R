@@ -1,0 +1,102 @@
+test_that("dataset prediction is returned with all fields", {
+  skip_if_not_installed("webfakes")
+  res <- genderapi_name("Onur", country = "TR", client = fake_client("dataset"))
+  expect_s3_class(res, "genderapi_prediction")
+  expect_s3_class(res, "genderapi_response")
+  fx <- read_fixture("gender-dataset")
+  expect_identical(unclass(res)[c("data", "meta")], fx[c("data", "meta")])
+  expect_identical(res$data$gender, "male")
+  expect_identical(res$data$result_status, "identified")
+  expect_null(res$data$reason)
+  expect_true("reason" %in% names(res$data))
+  expect_identical(res$data$confidence, 0.9)
+  expect_identical(res$data$confidence_kind, "observed_frequency")
+  expect_identical(res$data$sample_count, 100L)
+  expect_identical(res$data$match$method, "normalized")
+  expect_identical(res$meta$usage$billing_status, "confirmed")
+  expect_identical(res$meta$access$mode, "ip_trial")
+  df <- as.data.frame(res)
+  expect_identical(nrow(df), 1L)
+  expect_identical(df$confidence, 0.9)
+  expect_identical(df$match_scope, "country")
+  expect_output(print(res), "identified, gender male")
+})
+
+test_that("AI (alias) prediction keeps model_reported confidence and negative balance", {
+  skip_if_not_installed("webfakes")
+  res <- genderapi_username("prenses", country = "TR", force_to_genderize = TRUE,
+                            client = fake_client("alias"))
+  expect_identical(res$data$gender, "female")
+  expect_identical(res$data$source, "ai")
+  expect_identical(res$data$confidence, 0.7)
+  expect_identical(res$data$confidence_kind, "model_reported")
+  expect_null(res$data$sample_count)
+  expect_null(res$data$name)
+  expect_identical(res$data$country_source, "ai_association")
+  expect_identical(res$meta$usage$charged_credits, 2L)
+  expect_identical(res$meta$usage$remaining_credits, -1L)
+  expect_true(is.na(as.data.frame(res)$sample_count))
+})
+
+test_that("unknown result is a normal, billable return value", {
+  skip_if_not_installed("webfakes")
+  res <- genderapi_name("zzzxxyy", client = fake_client("unknown"))
+  expect_null(res$data$gender)
+  expect_null(res$data$confidence)
+  expect_null(res$data$confidence_kind)
+  expect_identical(res$data$result_status, "unknown")
+  expect_identical(res$data$reason, "not_found")
+  expect_identical(res$meta$usage$charged_credits, 1L)
+  df <- as.data.frame(res)
+  expect_true(is.na(df$gender))
+  expect_true(is.na(df$confidence))
+  expect_output(print(res), "unknown")
+})
+
+test_that("unknown fields are tolerated and kept", {
+  skip_if_not_installed("webfakes")
+  res <- genderapi_email("onur@example.com", client = fake_client("extra"))
+  expect_identical(res$data$future_field, list(nested = TRUE))
+  expect_identical(res$meta$future_meta, "x")
+  expect_identical(res$top_level_extra, 1L)
+  expect_identical(res$data$gender, "male")
+})
+
+test_that("requests carry exact headers, wire fields and no key in the URL", {
+  skip_if_not_installed("webfakes")
+  reset_log()
+  genderapi_username("prenses", country = "TR", ai_mode = "fallback",
+                     force_to_genderize = TRUE, id = "row-1", client = fake_client("echo"))
+  log <- request_log()
+  expect_length(log, 1)
+  r <- log[[1]]
+  expect_identical(r$method, "POST")
+  expect_identical(r$rest, "/gender")
+  expect_identical(r$authorization, paste("Bearer", test_key))
+  expect_identical(r$content_type, "application/json")
+  expect_match(r$accept, "application/json", fixed = TRUE)
+  expect_identical(r$user_agent, "genderapi-r/2.0.0")
+  expect_false(grepl(test_key, paste(r$path, r$query), fixed = TRUE))
+  expect_identical(r$query, "")
+  body <- jsonlite::fromJSON(r$body, simplifyVector = FALSE)
+  expect_identical(body, list(type = "username", value = "prenses", country = "TR", id = "row-1",
+                              forceToGenderize = TRUE, options = list(ai_mode = "fallback")))
+})
+
+test_that("without a key no Authorization header is sent (server IP trial)", {
+  skip_if_not_installed("webfakes")
+  reset_log()
+  genderapi_name("Onur", client = fake_client("echo", api_key = NULL))
+  r <- request_log()[[1]]
+  expect_null(r$authorization)
+  expect_identical(jsonlite::fromJSON(r$body, simplifyVector = FALSE),
+                   list(type = "name", value = "Onur"))
+})
+
+test_that("non-ASCII input is sent as UTF-8 JSON", {
+  skip_if_not_installed("webfakes")
+  reset_log()
+  genderapi_name("Çağlar", client = fake_client("echo"))
+  body <- jsonlite::fromJSON(request_log()[[1]]$body, simplifyVector = FALSE)
+  expect_identical(body$value, "Çağlar")
+})

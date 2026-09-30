@@ -1,0 +1,44 @@
+name: Publish (build CRAN tarball)
+
+# CRAN has no API or token for uploads: a release is a manual submission by the
+# maintainer listed in DESCRIPTION. This workflow only builds and checks the
+# source tarball for a v* tag and stores it as an artifact. No secrets needed.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GENDERAPI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - name: Check tag matches DESCRIPTION version
+        run: |
+          version=$(grep '^Version:' DESCRIPTION | awk '{print $2}')
+          test "v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match Version ${version}"; exit 1; }
+      - name: Build and check
+        run: |
+          R CMD build .
+          R CMD check --as-cran --no-manual genderapi_*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: genderapi-cran-tarball
+          path: genderapi_*.tar.gz
+      - name: Next step
+        run: echo "Submit the tarball manually at https://cran.r-project.org/submit.html; CRAN emails the maintainer in DESCRIPTION to confirm."
